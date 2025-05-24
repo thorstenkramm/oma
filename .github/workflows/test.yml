@@ -16,6 +16,7 @@ jobs:
           for I in $(seq 1 10);do
               sudo systemctl status mysql && break
               echo "$I ... waiting for mysql to come up"
+              sudo systemctl start mysql
               sleep 5
           done
           MYSQL_USER=$(whoami)
