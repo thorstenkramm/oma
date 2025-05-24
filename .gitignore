@@ -1,0 +1,8 @@
+/.venv/
+.idea
+.qodo
+oma
+oma.pyz
+oma.conf
+test.sh
+VERSION

@@ -1,0 +1,31 @@
+---
+name: Test and Lint
+on:
+  - push
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y default-mysql-server flake8 python3-pytest zip
+          MYSQL_USER=$(whoami)
+          sudo usermod  -a -G mysql $MYSQL_USER
+          cat << EOF | sudo mysql
+          CREATE USER '$MYSQL_USER'@'localhost' IDENTIFIED WITH auth_socket;
+          GRANT ALL PRIVILEGES ON *.* TO '$MYSQL_USER'@'localhost' WITH GRANT OPTION;
+          FLUSH PRIVILEGES;
+          EOF
+          mysql -e "show databases"
+
+      - name: Lint with flake8
+        run: |
+          flake8 -v .
+
+      - name: Test with pytest
+        run: |
+          python3 -m pytest tests/ -v -s
