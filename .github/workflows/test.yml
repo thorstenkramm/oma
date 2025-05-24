@@ -13,21 +13,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update
           sudo apt-get install -y default-mysql-server flake8 python3-pytest zip
-          for I in $(seq 1 10);do
-              sudo systemctl status mysql && break
-              echo "$I ... waiting for mysql to come up"
-              sudo systemctl start mysql
-              sleep 5
-          done
-          MYSQL_USER=$(whoami)
-          sudo usermod  -a -G mysql $MYSQL_USER
-          sleep 5
-          cat << EOF | sudo mysql
-          CREATE USER '$MYSQL_USER'@'localhost' IDENTIFIED WITH auth_socket;
-          GRANT ALL PRIVILEGES ON *.* TO '$MYSQL_USER'@'localhost' WITH GRANT OPTION;
-          FLUSH PRIVILEGES;
-          EOF
-          mysql -e "show databases"
+          sudo .github/scripts/setup_mysql.sh
 
       - name: Lint with flake8
         run: |
@@ -35,4 +21,4 @@ jobs:
 
       - name: Test with pytest
         run: |
-          python3 -m pytest tests/ -v -s
+          sudo python3 -m pytest tests/ -v -s
