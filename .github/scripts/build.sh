@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-zip oma.pyz *.py VERSION
+zip oma.pyz *.py
 echo '#!/usr/bin/env python3' | cat - oma.pyz > oma
 cp oma oma.pyz
 chmod +x oma

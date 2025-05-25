@@ -26,8 +26,9 @@ jobs:
       - name: Build OMA
         run: |
           chmod +x .github/scripts/build.sh
-          echo "$GITHUB_REF_NAME" > VERSION
           echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          sed -i "s/0.*src/$GITHUB_REF_NAME/g" version.py
+          cat version.py
           .github/scripts/build.sh
           tar cvzf oma-${GITHUB_REF_NAME}.tar.gz oma.pyz oma.conf.example
           ls -l
@@ -40,6 +41,7 @@ jobs:
           name: OMA v${{ env.VERSION }}
           draft: false
           prerelease: false
+          make_latest: true
           files: oma-*.tar.gz
           body: |
             Optimized Mysqldump Archiver v${{ env.VERSION }}
