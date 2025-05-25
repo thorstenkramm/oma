@@ -5,12 +5,12 @@
 [main]
 # Base directory to store backups, logs and meta data. Mandatory.
 # Directory must exist.
-backup_dir = "/tmp/smart-mysqldump"
+backup_dir = "/tmp/mysql_backup"
 
 # How many versions to keep. Optional.
 # Older version will be removed.
 # Default: 1
-versions = 4
+#versions = 4
 
 # Whether to delete old version before or after the current backup
 # Default: false (delete old backups after the current backup)
@@ -31,7 +31,7 @@ versions = 4
 # -2 on 10 CPUs means a  parallelism of 8.
 # If a negative value would lead to parallelism of 0 or less, 1 is used.
 # Default: number of CPUs
-parallelism = 1
+#parallelism = 1
 
 # Path to mysqldump executable. Optional.
 # Optional. If not given, it's expected in the default path.
@@ -57,11 +57,11 @@ parallelism = 1
 # Zabbix Sender Item Key. Optional.
 # Send current log file after the backup to zabbix using the given item key
 # Default: "" (not set, Log is not sent to Zabbix)
-#item_key = "mysqldump.log"
+#item_key = "oma.log"
 
 # Path to zabbix_sender executable. Optional.
 # Optional. If not given, it's expected in the default path.
-#sender_bin = "."
+#sender_bin = "/usr/local/bin/zabbix_sender"
 
 # Path to zabbix_agentd.conf used for zabbix_sender. Optional
 # Default: /etc/zabbix/zabbix_agentd.conf
