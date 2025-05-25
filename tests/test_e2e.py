@@ -61,7 +61,7 @@ class TestEndToEnd(unittest.TestCase):
         Run the backup again. Because no table has changed, all databases are marked as re-used.
         :return:
         """
-        time.sleep(4)
+        time.sleep(8)
         self.__run_backup()
         log_content = self.__read_log()
 
@@ -171,6 +171,10 @@ class TestEndToEnd(unittest.TestCase):
         self.assertNotIn("Error", log_content, "Errors found in the log file")
         # Validate backup parallelism
         self.assertIn("INFO Will start 2 parallel mysqldump processes", log_content, "parallelism does not match")
+
+        print("=" * 120)
+        print(log_content)
+        print("=" * 120)
 
         return log_content
 
