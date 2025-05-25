@@ -38,6 +38,7 @@ class TestEndToEnd(unittest.TestCase):
         pass
 
     def test_01_full_backup(self):
+        time.sleep(3)
         self.__run_backup()
 
         log_content = self.__read_log()
@@ -61,7 +62,7 @@ class TestEndToEnd(unittest.TestCase):
         Run the backup again. Because no table has changed, all databases are marked as re-used.
         :return:
         """
-        time.sleep(8)
+        time.sleep(3)
         self.__run_backup()
         log_content = self.__read_log()
 
