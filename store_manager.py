@@ -29,6 +29,7 @@ class StoreManager:
         :return: str
         """
         self.backup_dir = backup_dir
+        self.link_type = 'hard'
 
         # Ensure base directory exists
         if not os.path.exists(backup_dir):
@@ -124,7 +125,7 @@ class StoreManager:
         for suffix in ['.sql.gz', '.timestamp']:
             previous_file = os.path.join(self.previous_dir.path, database + suffix)
             current_file = os.path.join(self.current_dir.path, database + suffix)
-            swap_file_for_link(previous_file, current_file)
+            swap_file_for_link(previous_file, current_file, self.link_type)
 
     def _get_backup_dirs(self):
         """

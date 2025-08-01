@@ -60,9 +60,9 @@ class TestSwapFileForLink(unittest.TestCase):
         """Clean up temporary directory after tests."""
         shutil.rmtree(self.temp_dir)
 
-    def test_swap_file_for_link(self):
+    def test_swap_file_for_symbolic_link(self):
         """Test swapping a file for a symbolic link."""
-        utils.swap_file_for_link(self.source_file, self.dest_file)
+        utils.swap_file_for_link(self.source_file, self.dest_file,"symbolic")
 
         # Check that destination file exists and has the content
         self.assertTrue(os.path.exists(self.dest_file))
@@ -72,6 +72,24 @@ class TestSwapFileForLink(unittest.TestCase):
         # Check that source is now a symlink to destination
         self.assertTrue(os.path.islink(self.source_file))
         self.assertEqual(os.readlink(self.source_file), self.dest_file)
+
+    def test_swap_file_for_hard_link(self):
+        """Test swapping a file for a hard link."""
+        utils.swap_file_for_link(self.source_file, self.dest_file,"hard")
+
+        # Check that destination file exists and has the content
+        self.assertTrue(os.path.exists(self.dest_file))
+        with open(self.dest_file, "r") as f:
+            self.assertEqual(f.read(), "test content")
+
+        # Check if file has multiple hard links
+        self.assertGreater(os.stat(self.source_file).st_nlink, 1)
+
+        # And check if two files are hard links to each other
+        source_stat = os.stat(self.source_file)
+        dest_stat = os.stat(self.dest_file)
+        self.assertEqual(source_stat.st_ino, dest_stat.st_ino)
+        self.assertEqual(source_stat.st_dev, dest_stat.st_dev)
 
     def test_source_file_not_exists(self):
         """Test error when source file doesn't exist."""

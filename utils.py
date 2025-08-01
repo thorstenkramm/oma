@@ -18,12 +18,13 @@ def format_bytes(size_bytes: float) -> str:
     return f"{size_bytes:.2f} {size_names[i]}"
 
 
-def swap_file_for_link(source, destination):
+def swap_file_for_link(source: str, destination: str, link_type: str = 'hard'):
     """
     Moves a source file to a destination file.
     The source file will be replaced by a symbolic link to the new destination
     :param source: Path to the source file to be moved
     :param destination: Path where the file will be moved to
+    :param link_type: Type of symbolic link
     :return: None
     """
     # Ensure the source file exists
@@ -39,7 +40,12 @@ def swap_file_for_link(source, destination):
     shutil.move(source, destination)
 
     # Create a symbolic link at the source location pointing to the destination
-    os.symlink(destination, source)
+    if link_type == 'symbolic':
+        os.symlink(destination, source)
+    elif link_type == 'hard':
+        os.link(destination, source)
+    else:
+        raise ValueError(f"Unknown link type: {link_type}, must be 'symbolic' or 'hard'")
 
 
 def calc_parallelism(desired: int) -> int:

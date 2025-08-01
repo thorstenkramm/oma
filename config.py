@@ -40,6 +40,7 @@ class Config:
     exclude_databases: list[str]
     log_level: str
     skip_unchanged_dbs: bool
+    link_type: str
     zbx: ZbxConfig
 
 
@@ -90,8 +91,12 @@ def get_config(config_file: str) -> Config:
     if "backup_dir" not in main_config:
         raise ValueError("Required setting 'backup_dir' is missing")
 
-    backup_dir = main_config["backup_dir"]
+    # Check link_type
+    link_type = str(main_config.get("link_type", "hard"))
+    if link_type not in ["hard", "symbolic"]:
+        raise ValueError(f"Invalid link type: {link_type}")
 
+    backup_dir = main_config["backup_dir"]
     # Verify backup_dir exists
     if not os.path.isdir(backup_dir):
         raise ValueError(f"Backup directory does not exist: {backup_dir}")
@@ -109,6 +114,8 @@ def get_config(config_file: str) -> Config:
         mysqldump_bin=main_config.get("mysqldump_bin", "mysqldump"),
         # Default: "mysql" (in PATH)
         mysql_bin=main_config.get("mysql_bin", "mysql"),
+        # Default: "hard"
+        link_type=link_type,
         # Default: empty list
         mysqldump_options=main_config.get("mysqldump_options", []),
         # Default: empty list

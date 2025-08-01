@@ -28,6 +28,7 @@ class MySQLDump:
         self.logger = logger
         self.config = config
         self.store_manager = store_manager
+        store_manager.link_type = config.link_type
         self.mysql_info = MySQLInfo(mysql_bin=config.mysql_bin)
 
     def execute(self) -> BackupResult:

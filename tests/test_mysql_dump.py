@@ -22,6 +22,7 @@ class TestMySQLDump(unittest.TestCase):
         self.mock_config.parallelism = 2
         self.mock_config.skip_unchanged_dbs = True
         self.mock_config.mysqldump_options = ["--single-transaction", "--quick"]
+        self.mock_config.link_type = "hard"
 
         self.mock_store_manager = MagicMock(spec=StoreManager)
         self.mock_store_manager.current_dir = MagicMock()  # Create the attribute first

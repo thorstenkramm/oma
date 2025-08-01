@@ -19,12 +19,18 @@ backup_dir = "/tmp/mysql_backup"
 
 # Skip unchanged databases. Instead of dumping a database that
 # had no changes since the last backup, a copy of that dump is
-# moved to the current directory and a symbolic link is placed in
+# moved to the current directory and a link is placed in
 # directories of previous backups.
 # database changes are detected by the modification date of the
 # table files in the mysql data dir.
 # Default: false, requires: delete_before = false
 #skip_unchanged_dbs = true
+
+# When the previous backup is re-used and a link in directories to current
+# backup is placed, what kind of link should it be?
+# Allowed values: 'symbolic' or 'hard'
+# Default: "hard"
+# link_type: "symbolic"
 
 # How many mysqldump processes to run in parallel. Optional.
 # Negative values are subtracted from total CPUs.
