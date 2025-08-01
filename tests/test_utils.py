@@ -62,7 +62,7 @@ class TestSwapFileForLink(unittest.TestCase):
 
     def test_swap_file_for_symbolic_link(self):
         """Test swapping a file for a symbolic link."""
-        utils.swap_file_for_link(self.source_file, self.dest_file,"symbolic")
+        utils.swap_file_for_link(self.source_file, self.dest_file, "symbolic")
 
         # Check that destination file exists and has the content
         self.assertTrue(os.path.exists(self.dest_file))
@@ -75,7 +75,7 @@ class TestSwapFileForLink(unittest.TestCase):
 
     def test_swap_file_for_hard_link(self):
         """Test swapping a file for a hard link."""
-        utils.swap_file_for_link(self.source_file, self.dest_file,"hard")
+        utils.swap_file_for_link(self.source_file, self.dest_file, "hard")
 
         # Check that destination file exists and has the content
         self.assertTrue(os.path.exists(self.dest_file))
