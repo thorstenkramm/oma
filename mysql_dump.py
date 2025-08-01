@@ -166,13 +166,40 @@ class MySQLDump:
                     raise Exception(f"mysqldump pipeline failed: {stderr_text}")
 
             # Check for completion message in the last line
-            with open(temp_path, 'r') as f:
-                dump_completion_line = f.read().strip()
+            # Handle potential encoding issues when reading the temp file
+            dump_completion_line = ""
+            try:
+                with open(temp_path, 'r', encoding='utf-8', errors='replace') as f:
+                    dump_completion_line = f.read().strip()
+            except Exception as e:
+                self.logger.warning(f"Failed to read temp file with UTF-8 encoding, trying binary mode: {e}")
+                try:
+                    with open(temp_path, 'rb') as f:
+                        content = f.read()
+                        # Try multiple encodings
+                        for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                            try:
+                                dump_completion_line = content.decode(encoding).strip()
+                                self.logger.debug(f"Successfully decoded temp file using {encoding} encoding")
+                                break
+                            except UnicodeDecodeError:
+                                continue
+                        if not dump_completion_line:
+                            # Last resort: ignore errors
+                            dump_completion_line = content.decode('utf-8', errors='ignore').strip()
+                            self.logger.warning("Used UTF-8 with ignore errors to read temp file")
+                except Exception as e:
+                    self.logger.error(f"Failed to read temp file even in binary mode: {e}")
+                    raise Exception(f"Could not read mysqldump completion status: {e}")
 
+            # Check for errors on stderr of mysqldump process
+            if len(stderr_text) > 0:
+                self.logger.error(f"mysqldump for DB '{database}' stderr: {stderr_text}")
             # Check if the last line matches the pattern indicating the dump completion timestamp
             dump_completed_pattern = re.compile(r"^-- Dump completed on \d{4}-\d{2}-\d{2}\s+\d+:\d{2}:\d{2}")
             if not dump_completed_pattern.match(dump_completion_line):
-                self.logger.error(f"Completion message not found. Last line: {dump_completion_line}")
+                self.logger.error(
+                    f"Completion message not found for db '{database}'.")
                 raise Exception("mysqldump did not complete successfully: no completion message found")
 
             self.logger.info(f"Database dump completed successfully: {output_file}")

@@ -155,6 +155,61 @@ class TestMySQLDump(unittest.TestCase):
         # Verify no subprocess was called
         self.mock_logger.error.assert_not_called()
 
+    @patch('subprocess.Popen')
+    @patch('tempfile.NamedTemporaryFile')
+    @patch('os.path.exists')
+    @patch('os.remove')
+    def test_mysqldump_to_gzip_encoding_issue(self, mock_remove, mock_exists, mock_temp_file, mock_popen):
+        """Test _mysqldump_to_gzip with encoding issues in the completion message."""
+        # Setup mocks
+        mock_temp = MagicMock()
+        mock_temp.name = "/tmp/temp_file"
+        mock_temp_file.return_value.__enter__.return_value = mock_temp
+
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_process.communicate.return_value = (None, b"")
+        mock_popen.return_value.__enter__.return_value = mock_process
+
+        mock_exists.return_value = True
+
+        # Setup mock for get_database_last_change and get_database_backup_time
+        self.mysql_dump.mysql_info.get_database_last_change.return_value = datetime.now() - timedelta(hours=1)
+        self.mock_store_manager.get_database_backup_time.return_value = datetime.now() - timedelta(hours=2)
+
+        # Mock open to return completion message with non-UTF8 character (0xb5 = µ in Latin-1)
+        completion_msg = b"-- Dump completed on 2023-01-01 12:00:00 \xb5"
+
+        # Create a mock that handles both text and binary mode
+        def mock_open_func(path, mode='r', **kwargs):
+            if 'b' in mode:
+                # Binary mode
+                mock_file = MagicMock()
+                mock_file.read.return_value = completion_msg
+                mock_file.__enter__.return_value = mock_file
+                mock_file.__exit__.return_value = None
+                return mock_file
+            else:
+                # Text mode - this should raise UnicodeDecodeError
+                raise UnicodeDecodeError('utf-8', completion_msg, 42, 43, 'invalid start byte')
+
+        with patch('builtins.open', side_effect=mock_open_func):
+            # Call _mysqldump_to_gzip
+            result = self.mysql_dump._mysqldump_to_gzip("test")
+
+            # Verify result
+            self.assertEqual(result, "/tmp/backup/test.sql.gz")
+
+            # Verify store_database_backup_time was called
+            self.mock_store_manager.store_database_backup_time.assert_called_once_with("test")
+
+            # Verify warning was logged about encoding issue
+            warning_calls = [call for call in self.mock_logger.warning.call_args_list]
+            self.assertTrue(any("Failed to read temp file with UTF-8 encoding" in str(call) for call in warning_calls))
+
+            # Verify temp file was removed
+            mock_remove.assert_called_once_with("/tmp/temp_file")
+
 
 if __name__ == '__main__':
     unittest.main()
