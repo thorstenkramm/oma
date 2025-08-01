@@ -33,13 +33,13 @@ Install:
 
 ```bash
 cd /tmp
-wget https://github.com/thorstenkramm/oma/releases/download/0.0.1/oma-0.0.1.tar.gz
-tar xf oma-0.0.1.tar.gz
+wget https://github.com/thorstenkramm/oma/releases/download/0.0.2/oma-0.0.2.tar.gz
+tar xf oma-0.0.2.tar.gz
 sudo mv oma.pyz /usr/local/bin/oma
 sudo chmod +x /usr/local/bin/oma
 sudo mkdir /etc/oma
 sudo mv oma.conf.example /etc/oma/oma.conf
-rm oma-0.0.1.tar.gz
+rm oma-0.0.2.tar.gz
 ```
 
 ## Run the backup
