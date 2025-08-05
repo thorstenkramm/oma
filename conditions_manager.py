@@ -29,12 +29,12 @@ class ConditionsManager:
             if exit_code == 0:
                 self.logger.info(f"Skip condition met: '{command}' (exit code: 0)")
                 if self.logger.level == logging.DEBUG and stdout:
-                    self.logger.debug(f"Skip condition stdout: {stdout}")
+                    self.logger.debug(f"Skip condition stdout: '{stdout.strip()}'")
                 return True
             else:
                 self.logger.debug(f"Skip condition not met: '{command}' (exit code: {exit_code})")
                 if stderr:
-                    self.logger.debug(f"Skip condition stderr: {stderr}")
+                    self.logger.debug(f"Skip condition stderr: '{stderr.strip()}'")
 
         self.logger.info("No skip conditions met, proceeding with backup")
         return False

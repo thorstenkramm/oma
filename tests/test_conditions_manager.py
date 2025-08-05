@@ -239,7 +239,7 @@ class TestConditionsManager(unittest.TestCase):
         result = manager.check_skip_conditions()
         self.assertTrue(result)
         # Should log stdout in debug mode
-        self.logger.debug.assert_any_call('Skip condition stdout: debug output')
+        self.logger.debug.assert_any_call("Skip condition stdout: 'debug output'")
 
 
 if __name__ == '__main__':
