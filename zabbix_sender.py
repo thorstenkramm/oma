@@ -1,12 +1,13 @@
 import subprocess
+from time import sleep
 
 from mysql_dump import BackupResult
 from config import ZbxConfig
-from logger import new_logger
+from logger import OmaLogger
 
 
 class ZabbixSender:
-    def __init__(self, zbx_config: ZbxConfig, logger: new_logger):
+    def __init__(self, zbx_config: ZbxConfig, logger: OmaLogger):
         self.sender_bin = zbx_config.sender_bin
         self.agent_conf = zbx_config.agent_conf
         self.item_key = zbx_config.item_key
@@ -24,10 +25,19 @@ class ZabbixSender:
             '-o',
             item_value
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            self.logger.error(
-                f"{' '.join(cmd)}: exit_code={result.returncode} stderr='{result.stderr}', stdout='{result.stdout}'")
+        for i in range(10):
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            stdout = result.stdout.replace('\r\n', '').replace('\n', '').replace('\r', '')
+            stderr = result.stderr.replace('\r\n', '').replace('\n', '').replace('\r', '')
+            exit_code = result.returncode
+            if exit_code == 0:
+                break
+            if result.returncode != 0:
+                backup_off = (i + 1) * 2
+                self.logger.warning(
+                    f"{self.sender_bin} failed: {exit_code=}, {stdout=}, {stderr=}, retry in {backup_off} seconds")
+                sleep(backup_off)
+            self.logger.error(f"{self.sender_bin} failed: giving up after {i} tries.")
 
     def send_log_file(self, backup_result: BackupResult):
         if not self.item_key:
