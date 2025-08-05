@@ -1,7 +1,6 @@
 import os
 import re
 import subprocess
-import logging
 import tempfile
 from dataclasses import dataclass
 
