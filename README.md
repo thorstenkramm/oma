@@ -15,6 +15,7 @@ Key features at a glance:
 - Option to run multiple mysqldump processes in parallel
 - No pip required. All required packages included in Debian & Ubuntu
 - Supervision of the mysqldump process and control of final success message
+- Option to run additional command before and after the backup
 - Distributed as a single-file Python zipap
 
 Refer to the [example of the configuration file](./oma.conf.example):
@@ -33,13 +34,13 @@ Install:
 
 ```bash
 cd /tmp
-wget https://github.com/thorstenkramm/oma/releases/download/0.0.2/oma-0.0.2.tar.gz
-tar xf oma-0.0.2.tar.gz
+wget https://github.com/thorstenkramm/oma/releases/download/0.0.3/oma-0.0.3.tar.gz
+tar xf oma-0.0.3.tar.gz
 sudo mv oma.pyz /usr/local/bin/oma
 sudo chmod +x /usr/local/bin/oma
 sudo mkdir /etc/oma
 sudo mv oma.conf.example /etc/oma/oma.conf
-rm oma-0.0.2.tar.gz
+rm oma-0.0.3.tar.gz
 ```
 
 ## Run the backup
@@ -61,3 +62,22 @@ all mysql configuration files as configured for your database installation. If y
 database you can for example create a file `~/.my.cnf` and put the password for accessing the database there.  
 Alternatively you can setup passwordless access via the authentication socket. The latter is since MySQL 8.X the default
 on most installations.
+
+## Conditions
+
+Conditions are command that are executed before and after the backup. You can hook in your commands at three different
+phases of the backup process.
+
+- `skip_conditions`, with this list of commands you can intentionally skip a backup but it's logged as successfully.
+  This is useful to dynamically react on role changes in a cluster. 
+- `run_conditions`, with this list of commands you can asure all conditions are met to run the backup. If a run
+  condition is not met, an error is logged and the backup is aborted and considered faulty. This is useful to mount
+  or verify storage devices. 
+- `terminate_conditions`, this list of commands is run after the mysqldump backup and all storage cleanup routines
+  have terminated. If command from the terminate conditions fail (exit code >0), an error is logged and the backup
+  is considered faulty. This is useful to copy the backup to remote locations.
+
+Refer to the [example of the configuration file](./oma.conf.example) for more details and all options.
+
+When running OMA in debug logging mode, stdout of the condition command is written to the OMA log.
+In info logging mode, only the exit code of commands is logged. Errors (stderr) are always logged. 

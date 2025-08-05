@@ -74,6 +74,7 @@ class StoreManager:
 
     def link_to_last_dir(self):
         link_dst = os.path.join(self.backup_dir, 'last')
+        log_dst = os.path.join(self.backup_dir, 'last.log')
         # Handle removal properly whether it's a file, directory, or symlink
         if os.path.islink(link_dst):
             os.unlink(link_dst)
@@ -82,6 +83,19 @@ class StoreManager:
         elif os.path.exists(link_dst):
             os.remove(link_dst)
         os.symlink(self.current_dir.path, link_dst, target_is_directory=True)
+        log_src = os.path.join(self.current_dir.path, 'oma.log')
+        if os.path.exists(log_dst) or os.path.islink(log_dst):
+            os.unlink(log_dst)
+        os.symlink(log_src, log_dst, target_is_directory=False)
+
+    def remove_skipped(self):
+        """
+        Remove a folder if the backup has been skipped entirely.
+        :return:
+        """
+        log_file = os.path.join(self.current_dir.path, 'oma.log')
+        os.rename(log_file, os.path.join(self.backup_dir, 'last.log'))
+        shutil.rmtree(self.current_dir.path)
 
     def get_backup_info(self) -> MySQLDumpInfo:
         try:

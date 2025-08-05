@@ -1,7 +1,23 @@
 import logging
+import os
 
 
-def new_logger(log_file: str = "", log_level: str = "info") -> logging.Logger:
+class OmaLogger(logging.Logger):
+    """Custom logger class that extends logging.Logger with additional functionality"""
+
+    def __init__(self, name, level=logging.NOTSET):
+        super().__init__(name, level)
+        self.log_file = None
+
+    def read_log(self):
+        """Read and return the content of the log file"""
+        if self.log_file and os.path.exists(self.log_file):
+            with open(self.log_file, 'r', encoding='utf-8') as f:
+                return f.read()
+        return ""
+
+
+def new_logger(log_file: str = "", log_level: str = "info") -> OmaLogger:
     """
     Create a new logger. If log_file is not given, logs are printed to stdout.
     If log_file exists, it will be overwritten. Logs are NOT appended to existing files.
@@ -9,8 +25,14 @@ def new_logger(log_file: str = "", log_level: str = "info") -> logging.Logger:
     :param log_level: Log level (debug, info, warning, error)
     :return: Configured logging instance
     """
-    # Create logger
-    logger = logging.getLogger()
+    # Create custom logger
+    logging.setLoggerClass(OmaLogger)
+    logger = logging.getLogger('oma')
+    # Ensure we have the right type
+    assert isinstance(logger, OmaLogger)
+
+    # Store the log file path
+    logger.log_file = log_file
 
     # Set log level based on parameter
     log_level_map = {

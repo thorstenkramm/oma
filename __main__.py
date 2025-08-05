@@ -9,6 +9,7 @@ from logger import new_logger
 from store_manager import StoreManager
 from zabbix_sender import ZabbixSender
 from version import get_version
+from conditions_manager import ConditionsManager
 
 
 def parse_arguments():
@@ -59,6 +60,31 @@ def main():
     if args.debug:
         logger.debug("Debug mode enabled via command line argument")
 
+    # Initialize a backup result
+    backup_result = BackupResult(0, 0, 0, 0)
+
+    # Initialize zabbix sender
+    zabbix_sender = ZabbixSender(config.zbx, logger)
+
+    # Initialize conditions manager
+    conditions_manager = ConditionsManager(config.conditions, logger)
+
+    # Check skip conditions
+    if conditions_manager.check_skip_conditions():
+        logger.info("Backup skipped due to skip conditions (but considered successful)")
+        backup_result.all_skipped_successfully = True
+        zabbix_sender.send_log_file(backup_result)
+        store_manager.remove_skipped()
+        sys.exit(0)
+
+    # Check run conditions
+    if not conditions_manager.check_run_conditions():
+        logger.error("Backup aborted due to failed run conditions")
+        backup_result.all_skipped_faulty = True
+        zabbix_sender.send_log_file(backup_result)
+        store_manager.remove_skipped()
+        sys.exit(1)
+
     # Clean up before doing the backup, if desired
     store_manager.cleanup_before(config.versions) if config.delete_before else None
     # Do the backup
@@ -68,21 +94,19 @@ def main():
         backup_result = mysql_dump.execute()
     except Exception as e:
         logger.error(e)
-        backup_result = BackupResult(0, 0, 0, 0)
 
     # Clean up after doing the backup, if desired
     if not config.delete_before:
         removed = store_manager.cleanup_after(config.versions)
         logger.info(f"Removed old backup directories: {removed}")
 
+    # Execute terminate conditions
+    if not conditions_manager.execute_terminate_conditions(store_manager.current_dir.path):
+        logger.error("One or more terminate conditions failed")
+        # Note: We don't exit with error here as the backup itself was successful
+
     # Send log to zabbix, if desired
-    if config.zbx.item_key != "":
-        zs = ZabbixSender(backup_result, config.zbx.sender_bin, config.zbx.agent_conf)
-        try:
-            zs.send_file(config.zbx.item_key, log_file)
-            logger.debug(f"Logfile sent successfully via zabbix_sender. Item key: {config.zbx.item_key}")
-        except Exception as e:
-            logger.error(f"zabbix_sender: {e}")
+    zabbix_sender.send_log_file(backup_result)
 
 
 if __name__ == "__main__":
