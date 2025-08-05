@@ -10,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from mysql_info import MySQLInfo
 from store_manager import StoreManager
+from logger import OmaLogger
 
 from utils import format_bytes, calc_parallelism
 from datetime import datetime
@@ -26,7 +27,7 @@ class BackupResult:
 
 
 class MySQLDump:
-    def __init__(self, config: Config, store_manager: StoreManager, logger: logging):
+    def __init__(self, config: Config, store_manager: StoreManager, logger: OmaLogger):
         self.logger = logger
         self.config = config
         self.store_manager = store_manager

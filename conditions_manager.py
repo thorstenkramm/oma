@@ -4,10 +4,11 @@ import os
 from typing import Tuple
 
 from config import ConditionsConfig
+from logger import OmaLogger
 
 
 class ConditionsManager:
-    def __init__(self, conditions_config: ConditionsConfig, logger: logging.Logger):
+    def __init__(self, conditions_config: ConditionsConfig, logger: OmaLogger):
         self.config = conditions_config
         self.logger = logger
 
