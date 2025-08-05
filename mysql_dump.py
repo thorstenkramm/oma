@@ -21,6 +21,8 @@ class BackupResult:
     successful: int = 0
     failed: int = 0
     total: int = 0
+    all_skipped_successfully: bool = False
+    all_skipped_faulty: bool = False
 
 
 class MySQLDump:

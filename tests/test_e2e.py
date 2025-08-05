@@ -43,6 +43,11 @@ class TestEndToEnd(unittest.TestCase):
 
         log_content = self.__read_log()
 
+        # Assert no errors found in the log
+        self.assertNotIn("Error", log_content, "Errors found in the log file")
+        # Validate backup parallelism
+        self.assertIn("INFO Will start 2 parallel mysqldump processes", log_content, "parallelism does not match")
+
         # Assert all databases have been backed up and not re-used
         for database in [db for db in self.databases if not db.startswith("skip")]:
             self.assertIn(
@@ -66,6 +71,11 @@ class TestEndToEnd(unittest.TestCase):
         self.__run_backup()
         log_content = self.__read_log()
 
+        # Assert no errors found in the log
+        self.assertNotIn("Error", log_content, "Errors found in the log file")
+        # Validate backup parallelism
+        self.assertIn("INFO Will start 2 parallel mysqldump processes", log_content, "parallelism does not match")
+
         for database in [db for db in self.databases if not db.startswith("skip")]:
             self.assertIn(
                 f"INFO DB '{database}': Backup is newer than last database change. Reusing previous backup",
@@ -85,7 +95,9 @@ class TestEndToEnd(unittest.TestCase):
         time.sleep(4)
         self.__run_backup()
         log_content = self.__read_log()
-        print(log_content)
+        # Assert no errors found in the log
+        self.assertNotIn("Error", log_content, "Errors found in the log file")
+
         self.assertIn(
             "INFO DB 'demo2': Backup is newer than last database change. Reusing previous backup",
             log_content,
@@ -104,6 +116,9 @@ class TestEndToEnd(unittest.TestCase):
         """
         self.__run_backup()
         log_content = self.__read_log()
+
+        # Assert no errors found in the log
+        self.assertNotIn("Error", log_content, "Errors found in the log file")
 
         for database in [db for db in self.databases if not db.startswith("skip")]:
             self.assertIn(
@@ -130,6 +145,9 @@ class TestEndToEnd(unittest.TestCase):
 
         log_content = self.__read_log()
 
+        # Assert no errors found in the log
+        self.assertNotIn("Error", log_content, "Errors found in the log file")
+
         # Assert all databases have been backed up and not re-used
         for database in [db for db in self.databases if not db.startswith("skip")]:
             self.assertIn(
@@ -149,35 +167,92 @@ class TestEndToEnd(unittest.TestCase):
                 "database last change found. skip_unchanged_dbs shall supress this."
             )
 
-    def __run_backup(self, config: str = "run1"):
+    def test_07_successfully_skip(self):
+        self.__run_backup("skip_condition_success")
+
+        log_content = self.__read_log()
+
+        # Assert backup has been skipped intentionally due to conditions
+        self.assertIn(
+            "INFO Backup skipped due to skip conditions (but considered successful)",
+            log_content,
+            "Success message not found in the log file"
+        )
+
+    def test_08_faulty_skip(self):
+        self.__run_backup("skip_condition_faulty", 1)
+
+        log_content = self.__read_log()
+        msgs = [
+            'DEBUG Run condition passed: \'echo "Hi There"|grep "Hi There"\' (exit code: 0)',
+            'DEBUG Run condition stdout: Hi There',
+            'ERROR Run condition failed: \'non-existing-command\' (exit code: 127)',
+            'ERROR Run condition stderr: /bin/sh: 1: non-existing-command: not found',
+            'ERROR Backup aborted due to failed run conditions',
+        ]
+        # Assert backup has been skipped
+        for msg in msgs:
+            self.assertIn(msg, log_content, f"{msg}: not found in the log file")
+
+    def test_09_timeout_skip(self):
+        self.__run_backup("skip_condition_timeout", 1)
+
+        log_content = self.__read_log()
+        msgs = [
+            'DEBUG Run condition passed: \'echo Hi There\' (exit code: 0)',
+            'DEBUG Run condition stdout: Hi There',
+            'ERROR Command timed out after 1 seconds: \'sleep 3\'',
+            'ERROR Run condition stderr: Command timed out after 1 seconds',
+            'ERROR Backup aborted due to failed run conditions',
+        ]
+        # Assert backup has been skipped
+        for msg in msgs:
+            self.assertIn(msg, log_content, f"{msg}: not found in the log file")
+
+    def test_10_terminate_condition(self):
+        self.__run_backup("terminate_condition_success", 0)
+
+        log_content = self.__read_log()
+        msgs = [
+            'DEBUG Terminate condition stdout: /tmp/oma/oma_',
+            'INFO Terminate condition succeeded: \'ls -la $OMA_CURRENT_DIR\'',
+            'INFO All terminate conditions succeeded',
+        ]
+        # Assert backup has been skipped
+        for msg in msgs:
+            self.assertIn(msg, log_content, f"{msg}: not found in the log file")
+
+    def __run_backup(self, config: str = "run1", expected_exit_code: int = 0):
         response = subprocess.run(
             f"./oma -c test_data/{config}.conf",
             shell=True,
-            check=True,
+            check=False,
             capture_output=True
         )
         time.sleep(3)
+        self.assertEqual(response.returncode, expected_exit_code)
         print(response.stdout.decode())
         print(response.stderr.decode())
+        self.__read_zabbix_sender_log()
 
     def __read_log(self) -> str:
         # Open and read the log file
-        # log_file = self.__get_subdirs('/tmp/oma')[0] + "/oma.log"
-        log_file = '/tmp/oma/last/oma.log'
+        log_file = '/tmp/oma/last.log'
         print("Reading log file: " + log_file)
         with open(log_file, "r") as f:
             log_content = f.read()
-
-        # Assert no errors found in the log
-        self.assertNotIn("Error", log_content, "Errors found in the log file")
-        # Validate backup parallelism
-        self.assertIn("INFO Will start 2 parallel mysqldump processes", log_content, "parallelism does not match")
 
         print("=" * 120)
         print(log_content)
         print("=" * 120)
 
         return log_content
+
+    def __read_zabbix_sender_log(self):
+        log_file = '/tmp/zabbix_sender.log'
+        with open(log_file, "r") as f:
+            log_content = f.read()
+        self.assertIn("Summary", log_content, f"Summary not found in {log_file}")
 
 
 def count_subfolders(directory_path):

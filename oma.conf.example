@@ -59,6 +59,47 @@ backup_dir = "/tmp/mysql_backup"
 # Default: info
 #log_level = "debug"
 
+[conditions]
+# List of commands executed with /bin/sh before the backup starts.
+# If any of the commands defined in the skip_conditions list exits with exit code  0,
+# the backup is skipped but considered successful. On first exit code 0, the rest of the commands are skipped.
+# This is useful for intentionally skipping backups without logging an error.
+#skip_conditions = ['ifconfig|grep -q 192.168.178.1']
+
+# Timeout (seconds) after which skip_conditions are aborted.
+# If timeout is reached, the test is considered failed and the backup is run.
+# The timeout applies to each command individually.
+# Default: 0 (no limits)
+#skip_conditions_timeout = 240
+
+# List of commands executed with /bin/sh before the backup starts.
+# Only if all commands defined in the run_conditions list exit with exit code  0,
+# the backup will be run. If one of the command fails, backup is skipped and considered
+# faulty. On first exit code > 0, the rest of the commands are skipped.
+# This is useful to abort backups if crucial conditions are not met.
+#run_conditions ['mount|grep -q /var/backups']
+
+# Timeout (seconds) after which run_conditions are aborted.
+# If timeout is reached, the test is considered failed and the backup is aborted with an error.
+# The timeout applies to each command individually.
+# Default: 0 (no limits)
+#run_conditions_timeout = 240
+
+# List of commands executed with /bin/sh after the backup has ended.
+# If any of the commands defined in the terminate_conditions list exits with exit code > 0,
+# an error is logged and the backup is considered faulty.
+# This is useful for e.g. for copying backups to a remote storage.
+# On first exit code > 0, the rest of the commands are skipped.
+# The environment variable $OMA_CURRENT_DIR is filled with the full path to the current backup directory
+# without a trailing slash.
+#terminate_conditions = ['rsync -a $OMA_CURRENT_DIR user@host:/var/backups/']
+
+# Timeout (seconds) after which terminate_conditions are aborted.
+# If timeout is reached, the command is considered failed and an error is logged.
+# The timeout applies to each command individually.
+# Default: 0 (no limits)
+#terminate_conditions_timeout = 240
+
 [zabbix]
 # Zabbix Sender Item Key. Optional.
 # Send current log file after the backup to zabbix using the given item key

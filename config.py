@@ -29,6 +29,16 @@ class ZbxConfig:
 
 
 @dataclass
+class ConditionsConfig:
+    skip_conditions: list[str]
+    skip_conditions_timeout: int
+    run_conditions: list[str]
+    run_conditions_timeout: int
+    terminate_conditions: list[str]
+    terminate_conditions_timeout: int
+
+
+@dataclass
 class Config:
     backup_dir: str
     parallelism: int
@@ -42,6 +52,7 @@ class Config:
     skip_unchanged_dbs: bool
     link_type: str
     zbx: ZbxConfig
+    conditions: ConditionsConfig
 
 
 def get_config(config_file: str) -> Config:
@@ -87,6 +98,11 @@ def get_config(config_file: str) -> Config:
     else:
         zbx_config = {}
 
+    if "conditions" in config_data:
+        conditions_config = config_data["conditions"]
+    else:
+        conditions_config = {}
+
     # Check for required backup_dir
     if "backup_dir" not in main_config:
         raise ValueError("Required setting 'backup_dir' is missing")
@@ -128,6 +144,14 @@ def get_config(config_file: str) -> Config:
             item_key=zbx_config.get("item_key", ""),
             sender_bin=zbx_config.get("sender_bin", "zabbix_sender"),
             agent_conf=zbx_config.get("agent_conf", "/etc/zabbix/zabbix_agentd.conf"),
+        ),
+        conditions=ConditionsConfig(
+            skip_conditions=conditions_config.get("skip_conditions", []),
+            skip_conditions_timeout=conditions_config.get("skip_conditions_timeout", 0),
+            run_conditions=conditions_config.get("run_conditions", []),
+            run_conditions_timeout=conditions_config.get("run_conditions_timeout", 0),
+            terminate_conditions=conditions_config.get("terminate_conditions", []),
+            terminate_conditions_timeout=conditions_config.get("terminate_conditions_timeout", 0),
         )
     )
 
