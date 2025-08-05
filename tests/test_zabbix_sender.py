@@ -77,6 +77,7 @@ class TestZabbixSender(unittest.TestCase):
         mock_run.return_value = mock_process
 
         # Call the method
+        self.sender.set_retires(1)
         self.sender.send_value("test_value")
 
         # Read log and verify the error created by the zabbix_sender sub process is logged

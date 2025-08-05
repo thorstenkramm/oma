@@ -12,6 +12,10 @@ class ZabbixSender:
         self.agent_conf = zbx_config.agent_conf
         self.item_key = zbx_config.item_key
         self.logger = logger
+        self.retries = 10
+
+    def set_retires(self, retires: int):
+        self.retries = retires
 
     def send_value(self, item_value: str):
         if not self.item_key:
@@ -25,12 +29,13 @@ class ZabbixSender:
             '-o',
             item_value
         ]
-        for i in range(10):
+        for i in range(self.retries):
             result = subprocess.run(cmd, capture_output=True, text=True)
             stdout = result.stdout.replace('\r\n', '').replace('\n', '').replace('\r', '')
             stderr = result.stderr.replace('\r\n', '').replace('\n', '').replace('\r', '')
             exit_code = result.returncode
             if exit_code == 0:
+                self.logger.info(f"{self.sender_bin}: sent successfully, item_key: {self.item_key}")
                 break
             if result.returncode != 0:
                 backup_off = (i + 1) * 2
