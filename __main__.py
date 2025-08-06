@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 
-from mysql_dump import MySQLDump, BackupResult
+from mysql_dump import MySQLDump, BackupResult, NotEnoughDiskSpaceError
 from config import get_config
 from logger import new_logger
 from store_manager import StoreManager
@@ -92,6 +92,12 @@ def main():
     try:
         mysql_dump = MySQLDump(config, store_manager, logger)
         backup_result = mysql_dump.execute()
+    except NotEnoughDiskSpaceError as e:
+        logger.error(e)
+        backup_result.all_skipped_faulty = True
+        zabbix_sender.send_log_file(backup_result)
+        store_manager.remove_skipped()
+        sys.exit(2)
     except Exception as e:
         logger.error(e)
 

@@ -48,6 +48,7 @@ class Config:
     mysql_bin: str
     mysqldump_options: list[str]
     exclude_databases: list[str]
+    do_databases: list[str]
     log_level: str
     skip_unchanged_dbs: bool
     link_type: str
@@ -136,6 +137,8 @@ def get_config(config_file: str) -> Config:
         mysqldump_options=main_config.get("mysqldump_options", []),
         # Default: empty list
         exclude_databases=main_config.get("exclude_databases", []),
+        # Default: empty list
+        do_databases=main_config.get("do_databases", []),
         # Default: "info"
         log_level=main_config.get("log_level", "info"),
         # Default: false
@@ -162,5 +165,9 @@ def get_config(config_file: str) -> Config:
     # Reject mutually exclusive values
     if config.delete_before and config.skip_unchanged_dbs:
         raise ValueError("Mutually exclusive values: cannot specify 'skip_unchanged_dbs' with 'delete_before' option")
+
+    # Reject mutually exclusive values for database selection
+    if config.exclude_databases and config.do_databases:
+        raise ValueError("Mutually exclusive values: cannot specify both 'exclude_databases' and 'do_databases'")
 
     return config

@@ -15,6 +15,18 @@ from utils import format_bytes, calc_parallelism
 from datetime import datetime
 
 
+class NotEnoughDiskSpaceError(Exception):
+    """Exception raised when backup wouldn't fit in disk space"
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 @dataclass
 class BackupResult:
     skipped: int = 0
@@ -42,23 +54,37 @@ class MySQLDump:
         self.logger.debug(f"Found {len(self.mysql_info.databases)} databases: {', '.join(self.mysql_info.databases)}")
         self.logger.info(f"Skip unchanged databases: {self.config.skip_unchanged_dbs}")
 
-        # Exit, if we don't have enough free space
-        if not self._check_free_space():
-            return BackupResult()
-
         # Generate list of databases to be backed up.
         databases = []
         skip = []
-        for d in self.mysql_info.databases:
-            if d in self.config.exclude_databases:
-                skip.append(d)
-            else:
-                databases.append(d)
-        if len(self.config.exclude_databases) > 0:
-            self.logger.info(f"Excluding databases {self.config.exclude_databases} from backup job.")
-        for e in self.config.exclude_databases:
-            if e not in self.mysql_info.databases:
-                self.logger.warning(f"Database to be excluded '{e}' does not exist.")
+
+        # Check if do_databases is specified
+        if self.config.do_databases:
+            # Use only the specified databases
+            for db in self.config.do_databases:
+                if db in self.mysql_info.databases:
+                    databases.append(db)
+                else:
+                    self.logger.warning(f"Database '{db}' specified in do_databases does not exist.")
+            # Skip all other databases
+            skip = [d for d in self.mysql_info.databases if d not in self.config.do_databases]
+            self.logger.info(f"Backing up only specified databases: {self.config.do_databases}")
+        else:
+            # Use the exclude logic
+            for d in self.mysql_info.databases:
+                if d in self.config.exclude_databases:
+                    skip.append(d)
+                else:
+                    databases.append(d)
+            if len(self.config.exclude_databases) > 0:
+                self.logger.info(f"Excluding databases {self.config.exclude_databases} from backup job.")
+            for e in self.config.exclude_databases:
+                if e not in self.mysql_info.databases:
+                    self.logger.warning(f"Database to be excluded '{e}' does not exist.")
+
+        # Exit, if we don't have enough free space
+        if not self._check_free_space(databases):
+            return BackupResult()
 
         parallelism = calc_parallelism(self.config.parallelism)
         with ProcessPoolExecutor(max_workers=parallelism) as executor:
@@ -101,17 +127,16 @@ class MySQLDump:
             total=len(self.mysql_info.databases),
         )
 
-    def _check_free_space(self) -> bool:
+    def _check_free_space(self, databases: list[str]) -> bool:
         previous_dump_info = self.store_manager.get_backup_info()
         # Check if we have enough free disk space for the backup
-        required_free_bytes = self.mysql_info.data_dir.bytes_used * previous_dump_info.compression_ratio
+        required_free_bytes = self.mysql_info.get_databases_size(databases) * previous_dump_info.compression_ratio
         self.logger.info(
             f"Backup will require {format_bytes(required_free_bytes)} bytes. "
             + f"Having {format_bytes(self.store_manager.current_dir.bytes_free)} free."
         )
         if required_free_bytes > self.store_manager.current_dir.bytes_free:
-            self.logger.error("Not enough free space in target directory.")
-            return False
+            raise NotEnoughDiskSpaceError("Not enough free space in target directory.")
         return True
 
     def _mysqldump_to_gzip(self, database: str):
@@ -132,7 +157,10 @@ class MySQLDump:
 
             if previous_dump_time.timestamp() > database_last_change.timestamp():
                 self.logger.info(f"DB '{database}': Backup is newer than last database change. Reusing previous backup")
-                self.store_manager.reuse_previous_backup(database)
+                try:
+                    self.store_manager.reuse_previous_backup(database)
+                except Exception as exc:
+                    self.logger.error(f"DB '{database}': Moving previous backup to current directory: {exc}")
                 return "ok"
 
         # Create a temporary file for the last line of the output

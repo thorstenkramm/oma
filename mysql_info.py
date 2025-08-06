@@ -46,6 +46,27 @@ class MySQLInfo:
 
         return databases
 
-    def get_database_last_change(self, database) -> datetime:
+    def get_database_last_change(self, database: str) -> datetime:
         database_dir = os.path.join(self.data_dir.path, database)
         return get_dir_last_change(database_dir)
+
+    def get_database_size(self, database: str) -> int:
+        """
+        get the size of the database in bytes.
+        :param database:
+        :return:
+        """
+        database_dir = os.path.join(self.data_dir.path, database)
+        info = get_dir_info(database_dir)
+        return info.bytes_used
+
+    def get_databases_size(self, databases: list[str]) -> int:
+        """
+        Get the size of all databases.
+        :param list of databases:
+        :return: size in bytes
+        """
+        size = 0
+        for database in databases:
+            size += self.get_database_size(database)
+        return size

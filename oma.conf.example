@@ -8,7 +8,7 @@
 backup_dir = "/tmp/mysql_backup"
 
 # How many versions to keep. Optional.
-# Older version will be removed.
+# Older versions will be removed.
 # Default: 1
 #versions = 4
 
@@ -21,7 +21,7 @@ backup_dir = "/tmp/mysql_backup"
 # had no changes since the last backup, a copy of that dump is
 # moved to the current directory and a link is placed in
 # directories of previous backups.
-# database changes are detected by the modification date of the
+# Database changes are detected by the modification date of the
 # table files in the mysql data dir.
 # Default: false, requires: delete_before = false
 #skip_unchanged_dbs = true
@@ -30,26 +30,32 @@ backup_dir = "/tmp/mysql_backup"
 # backup is placed, what kind of link should it be?
 # Allowed values: 'symbolic' or 'hard'
 # Default: "hard"
-# link_type: "symbolic"
+#link_type = "symbolic"
 
 # How many mysqldump processes to run in parallel. Optional.
 # Negative values are subtracted from total CPUs.
-# -2 on 10 CPUs means a  parallelism of 8.
+# -2 on 10 CPUs means a parallelism of 8.
 # If a negative value would lead to parallelism of 0 or less, 1 is used.
 # Default: number of CPUs
 #parallelism = 1
 
-# Path to mysqldump executable. Optional.
-# Optional. If not given, it's expected in the default path.
+# Path to mysqldump executable.
+# If not given, it's expected in the default path.
 #mysqldump_bin = "/usr/local/bin/mysqldump"
 
-# Path to mysql executable. Optional.
-# Optional. If not given, it's expected in the default path.
+# Path to mysql executable.
+# If not given, it's expected in the default path.
 #mysql_bin = "/usr/local/bin/mysql"
 
 # List of databases to exclude from backup.
-# 'information_schema', 'sys', 'performance_schema' are always excluded from backup
-#exclude_databases = ['example1','example2]
+# 'information_schema', 'sys', 'performance_schema' are always excluded
+# Mutually exclusive with 'do_databases'.
+#exclude_databases = ['example1','example2']
+
+# List of databases to backup.
+# Instead of backing up all databases, backup only the below list.
+# Mutually exclusive with 'exclude_databases'.
+#do_databases = ['example3','example4']
 
 # List of command line arguments appended to mysqldump processes. Optional.
 # Default: [] (No extra arguments)
@@ -61,7 +67,7 @@ backup_dir = "/tmp/mysql_backup"
 
 [conditions]
 # List of commands executed with /bin/sh before the backup starts.
-# If any of the commands defined in the skip_conditions list exits with exit code  0,
+# If any of the commands defined in the skip_conditions list exits with exit code 0,
 # the backup is skipped but considered successful. On first exit code 0, the rest of the commands are skipped.
 # This is useful for intentionally skipping backups without logging an error.
 #skip_conditions = ['ifconfig|grep -q 192.168.178.1']
@@ -73,11 +79,11 @@ backup_dir = "/tmp/mysql_backup"
 #skip_conditions_timeout = 240
 
 # List of commands executed with /bin/sh before the backup starts.
-# Only if all commands defined in the run_conditions list exit with exit code  0,
+# Only if all commands defined in the run_conditions list exit with exit code 0,
 # the backup will be run. If one of the command fails, backup is skipped and considered
 # faulty. On first exit code > 0, the rest of the commands are skipped.
 # This is useful to abort backups if crucial conditions are not met.
-#run_conditions ['mount|grep -q /var/backups']
+#run_conditions = ['mount|grep -q /var/backups']
 
 # Timeout (seconds) after which run_conditions are aborted.
 # If timeout is reached, the test is considered failed and the backup is aborted with an error.
@@ -88,7 +94,7 @@ backup_dir = "/tmp/mysql_backup"
 # List of commands executed with /bin/sh after the backup has ended.
 # If any of the commands defined in the terminate_conditions list exits with exit code > 0,
 # an error is logged and the backup is considered faulty.
-# This is useful for e.g. for copying backups to a remote storage.
+# This is useful e.g. for copying backups to a remote storage.
 # On first exit code > 0, the rest of the commands are skipped.
 # The environment variable $OMA_CURRENT_DIR is filled with the full path to the current backup directory
 # without a trailing slash.
@@ -106,8 +112,8 @@ backup_dir = "/tmp/mysql_backup"
 # Default: "" (not set, Log is not sent to Zabbix)
 #item_key = "oma.log"
 
-# Path to zabbix_sender executable. Optional.
-# Optional. If not given, it's expected in the default path.
+# Path to zabbix_sender executable.
+# If not given, it's expected in the default path.
 #sender_bin = "/usr/local/bin/zabbix_sender"
 
 # Path to zabbix_agentd.conf used for zabbix_sender. Optional

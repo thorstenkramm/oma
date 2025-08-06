@@ -23,6 +23,7 @@ class TestMySQLDump(unittest.TestCase):
         self.mock_config.skip_unchanged_dbs = True
         self.mock_config.mysqldump_options = ["--single-transaction", "--quick"]
         self.mock_config.link_type = "hard"
+        self.mock_config.do_databases = None  # Add this attribute
 
         self.mock_store_manager = MagicMock(spec=StoreManager)
         self.mock_store_manager.current_dir = MagicMock()  # Create the attribute first
@@ -31,17 +32,21 @@ class TestMySQLDump(unittest.TestCase):
 
         self.mock_logger = MagicMock()
 
-        # Create the MySQLDump instance with mocked dependencies
-        self.mysql_dump = MySQLDump(
-            config=self.mock_config,
-            store_manager=self.mock_store_manager,
-            logger=self.mock_logger
-        )
+        # Mock the MySQLInfo instance
+        mock_mysql_info = MagicMock()
+        mock_mysql_info.data_dir = MagicMock()
+        mock_mysql_info.data_dir.bytes_used = 500000000
+        mock_mysql_info.get_databases_size = MagicMock(return_value=500000000)
+        mock_mysql_info.databases = []  # Add this attribute
 
-        # Mock the MySQLInfo class
-        self.mysql_dump.mysql_info = MagicMock()
-        self.mysql_dump.mysql_info.data_dir = MagicMock()  # Create the attribute first
-        self.mysql_dump.mysql_info.data_dir.bytes_used = 500000000
+        # Patch MySQLInfo before creating MySQLDump instance
+        with patch('mysql_dump.MySQLInfo', return_value=mock_mysql_info):
+            # Create the MySQLDump instance with mocked dependencies
+            self.mysql_dump = MySQLDump(
+                config=self.mock_config,
+                store_manager=self.mock_store_manager,
+                logger=self.mock_logger
+            )
 
     def test_init(self):
         """Test initialization of MySQLDump."""
@@ -57,7 +62,7 @@ class TestMySQLDump(unittest.TestCase):
         self.mock_store_manager.get_backup_info.return_value = mock_backup_info
 
         # Call _check_free_space
-        result = self.mysql_dump._check_free_space()
+        result = self.mysql_dump._check_free_space([])
 
         # Verify result
         self.assertTrue(result)
@@ -73,12 +78,15 @@ class TestMySQLDump(unittest.TestCase):
         # Reduce free space to force failure
         self.mock_store_manager.current_dir.bytes_free = 1000000  # 1MB free
 
-        # Call _check_free_space
-        result = self.mysql_dump._check_free_space()
+        # Import the exception
+        from mysql_dump import NotEnoughDiskSpaceError
 
-        # Verify result
-        self.assertFalse(result)
-        self.mock_logger.error.assert_called_once_with("Not enough free space in target directory.")
+        # Call _check_free_space and expect an exception
+        with self.assertRaises(NotEnoughDiskSpaceError) as context:
+            self.mysql_dump._check_free_space([])
+
+        # Verify the exception message
+        self.assertEqual(str(context.exception), "Not enough free space in target directory.")
 
     @patch('subprocess.Popen')
     @patch('tempfile.NamedTemporaryFile')

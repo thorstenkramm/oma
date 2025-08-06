@@ -169,6 +169,35 @@ backup_dir = "/path/that/does/not/exist"
         self.assertEqual(config.parallelism, 8)
         mock_cpu_count.assert_called_once()
 
+    def test_do_databases_config(self):
+        """Test loading configuration with do_databases."""
+        do_databases_path = os.path.join(self.test_dir, "do_databases.toml")
+        with open(do_databases_path, "w") as f:
+            f.write(f"""
+[main]
+backup_dir = "{self.backup_dir}"
+do_databases = ["db1", "db2", "db3"]
+""")
+
+        config = get_config(do_databases_path)
+        self.assertEqual(config.do_databases, ["db1", "db2", "db3"])
+        self.assertEqual(config.exclude_databases, [])
+
+    def test_do_databases_exclude_databases_mutually_exclusive(self):
+        """Test that do_databases and exclude_databases are mutually exclusive."""
+        mutex_path = os.path.join(self.test_dir, "mutex.toml")
+        with open(mutex_path, "w") as f:
+            f.write(f"""
+[main]
+backup_dir = "{self.backup_dir}"
+do_databases = ["db1", "db2"]
+exclude_databases = ["db3", "db4"]
+""")
+
+        with self.assertRaises(ValueError) as context:
+            get_config(mutex_path)
+        self.assertIn("cannot specify both 'exclude_databases' and 'do_databases'", str(context.exception))
+
 
 if __name__ == '__main__':
     unittest.main()
