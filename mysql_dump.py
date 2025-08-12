@@ -83,6 +83,7 @@ class MySQLDump:
                     self.logger.warning(f"Database to be excluded '{e}' does not exist.")
 
         # Exit, if we don't have enough free space
+        self.logger.debug("Checking for free disk space...")
         if not self._check_free_space(databases):
             return BackupResult()
 

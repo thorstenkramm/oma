@@ -10,7 +10,7 @@ class TestEndToEnd(unittest.TestCase):
     def setUpClass(self):
         # Build the app
         subprocess.run(".github/scripts/build.sh")
-        self.databases = ['demo1', 'demo2', 'skip1']
+        self.databases = ['demo1', 'd-e-m-o-2', 'skip1']
         self.backup_dir = "/tmp/oma"
         # Prepare the backup dir
         subprocess.run(f"rm -rf {self.backup_dir} || true", shell=True)
@@ -18,7 +18,7 @@ class TestEndToEnd(unittest.TestCase):
         # Prepare the databases
         for database in self.databases:
             print(f"Creating database {database} ...")
-            subprocess.run(f"mysql -e 'DROP DATABASE IF EXISTS {database}; CREATE DATABASE {database}'",
+            subprocess.run(f"mysql -e 'DROP DATABASE IF EXISTS `{database}`; CREATE DATABASE `{database}`'",
                            shell=True, check=True)
             print(f"Filling database {database} with demo data ...")
             subprocess.run(f"mysql {database}< ./test_data/world.sql", shell=True, check=True)
@@ -29,7 +29,7 @@ class TestEndToEnd(unittest.TestCase):
     def tearDownClass(self):
         # Remove the created database
         for database in self.databases:
-            subprocess.run(f"mysql -e 'DROP DATABASE {database}'", shell=True, check=True)
+            subprocess.run(f"mysql -e 'DROP DATABASE `{database}`'", shell=True, check=True)
 
     def setUp(self):
         pass
@@ -99,7 +99,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertNotIn("Error", log_content, "Errors found in the log file")
 
         self.assertIn(
-            "INFO DB 'demo2': Backup is newer than last database change. Reusing previous backup",
+            "INFO DB 'd-e-m-o-2': Backup is newer than last database change. Reusing previous backup",
             log_content,
             "Previous backup reused."
         )
@@ -131,8 +131,8 @@ class TestEndToEnd(unittest.TestCase):
 
     def test_05_restore_from_backup(self):
         for database in [db for db in self.databases if not db.startswith("skip")]:
-            subprocess.run(f"mysql -e 'DROP DATABASE {database}'", shell=True, check=True)
-            subprocess.run(f"mysql -e 'CREATE DATABASE {database}'", shell=True, check=True)
+            subprocess.run(f"mysql -e 'DROP DATABASE `{database}`'", shell=True, check=True)
+            subprocess.run(f"mysql -e 'CREATE DATABASE `{database}`'", shell=True, check=True)
             subprocess.run(f"zcat /tmp/oma/last/{database}.sql.gz | mysql {database}", shell=True, check=True)
             response = subprocess.run(
                 f"mysql {database} -N -e 'show tables'|wc -l",

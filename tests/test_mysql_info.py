@@ -5,7 +5,7 @@ import subprocess
 import os
 
 # Assume dir_info.py and mysql_info.py are in the same directory or accessible via PYTHONPATH
-from mysql_info import MySQLInfo
+from mysql_info import MySQLInfo, encode_database_name
 
 
 # We need a dummy DirInfo class or mock object for get_dir_info's return value
@@ -20,6 +20,51 @@ class MockDirInfo:
 
 # Use the mock DirInfo if the real one isn't available/needed for basic tests
 # from dir_info import DirInfo # Use this if DirInfo is available and needed
+
+class TestEncodeDatabaseName(unittest.TestCase):
+    """Test the encode_database_name function"""
+
+    def test_encode_simple_name(self):
+        """Test that simple names without special characters are not changed"""
+        self.assertEqual(encode_database_name("mydb"), "mydb")
+        self.assertEqual(encode_database_name("test_db"), "test_db")
+        self.assertEqual(encode_database_name("DB123"), "DB123")
+
+    def test_encode_hyphen(self):
+        """Test encoding of hyphen/dash character"""
+        self.assertEqual(encode_database_name("test-db"), "test@002ddb")
+        self.assertEqual(encode_database_name("snipeit-fairmate"), "snipeit@002dfairmate")
+        self.assertEqual(encode_database_name("my-test-db"), "my@002dtest@002ddb")
+
+    def test_encode_period(self):
+        """Test encoding of period character"""
+        self.assertEqual(encode_database_name("test.db"), "test@002edb")
+        self.assertEqual(encode_database_name("v1.2.3"), "v1@002e2@002e3")
+
+    def test_encode_space(self):
+        """Test encoding of space character"""
+        self.assertEqual(encode_database_name("test db"), "test@0020db")
+        self.assertEqual(encode_database_name("my test db"), "my@0020test@0020db")
+
+    def test_encode_special_chars(self):
+        """Test encoding of various special characters"""
+        self.assertEqual(encode_database_name("test$db"), "test@0024db")
+        self.assertEqual(encode_database_name("test!db"), "test@0021db")
+        self.assertEqual(encode_database_name("test#db"), "test@0023db")
+        self.assertEqual(encode_database_name("test@db"), "test@0040db")
+        self.assertEqual(encode_database_name("test+db"), "test@002bdb")
+        self.assertEqual(encode_database_name("test=db"), "test@003ddb")
+
+    def test_encode_mixed_special_chars(self):
+        """Test encoding of mixed special characters"""
+        self.assertEqual(encode_database_name("test-db.v2"), "test@002ddb@002ev2")
+        self.assertEqual(encode_database_name("my-test db"), "my@002dtest@0020db")
+        self.assertEqual(encode_database_name("db$test-prod"), "db@0024test@002dprod")
+
+    def test_encode_empty_string(self):
+        """Test encoding of empty string"""
+        self.assertEqual(encode_database_name(""), "")
+
 
 class TestMySQLInfo(unittest.TestCase):
 
@@ -152,6 +197,79 @@ class TestMySQLInfo(unittest.TestCase):
 
         # Check the *return value* of the explicit call (filtering applied)
         self.assertEqual(databases, ['db_alpha', 'db_beta', 'db_gamma'])
+
+    @patch('mysql_info.get_dir_last_change')
+    @patch('mysql_info.get_dir_info', return_value=MockDirInfo('/base/data/path'))  # Use MockDirInfo
+    @patch('subprocess.run')
+    def test_get_database_last_change_with_special_chars(self, mock_subprocess_run, mock_get_dir_info,
+                                                         mock_get_dir_last_change):
+        """
+        Test the get_database_last_change method with database names containing special characters.
+        """
+        # --- Arrange ---
+        # Mock subprocess for __init__ calls
+        mock_data_dir_result = MagicMock(stdout='/base/data/path\n')
+        mock_db_list_result = MagicMock(stdout='db1\nsnipeit-fairmate\ntest.db\n')
+        mock_subprocess_run.side_effect = [mock_data_dir_result, mock_db_list_result]
+
+        # Mock the return value for get_dir_last_change
+        expected_datetime = datetime(2023, 10, 27, 10, 30, 0)
+        mock_get_dir_last_change.return_value = expected_datetime
+
+        # Instantiate the class
+        mysql_info = MySQLInfo()  # Uses mocks set up above
+
+        # --- Act ---
+        # Test with database name containing hyphen
+        db_name = 'snipeit-fairmate'
+        last_change_time = mysql_info.get_database_last_change(db_name)
+
+        # --- Assert ---
+        # Verify get_dir_info was called during init
+        mock_get_dir_info.assert_called_once_with('/base/data/path')
+
+        # Verify get_dir_last_change was called with the ENCODED database name
+        expected_encoded_path = os.path.join('/base/data/path', 'snipeit@002dfairmate')
+        mock_get_dir_last_change.assert_called_once_with(expected_encoded_path)
+
+        # Verify the returned datetime
+        self.assertEqual(last_change_time, expected_datetime)
+
+    @patch('mysql_info.get_dir_info')
+    @patch('subprocess.run')
+    def test_get_database_size_with_special_chars(self, mock_subprocess_run, mock_get_dir_info):
+        """
+        Test the get_database_size method with database names containing special characters.
+        """
+        # --- Arrange ---
+        # Mock subprocess for __init__ calls
+        mock_data_dir_result = MagicMock(stdout='/base/data/path\n')
+        mock_db_list_result = MagicMock(stdout='test-db\ntest.db\n')
+        mock_subprocess_run.side_effect = [mock_data_dir_result, mock_db_list_result]
+
+        # Mock get_dir_info for both init and get_database_size calls
+        mock_dir_info_init = MockDirInfo('/base/data/path')
+        mock_dir_info_db = MagicMock()
+        mock_dir_info_db.bytes_used = 1024000
+        mock_get_dir_info.side_effect = [mock_dir_info_init, mock_dir_info_db]
+
+        # Instantiate the class
+        mysql_info = MySQLInfo()
+
+        # --- Act ---
+        # Test with database name containing hyphen
+        db_name = 'test-db'
+        db_size = mysql_info.get_database_size(db_name)
+
+        # --- Assert ---
+        # Verify get_dir_info was called with the ENCODED database name
+        expected_encoded_path = os.path.join('/base/data/path', 'test@002ddb')
+        calls = mock_get_dir_info.call_args_list
+        self.assertEqual(calls[0][0][0], '/base/data/path')  # First call from init
+        self.assertEqual(calls[1][0][0], expected_encoded_path)  # Second call from get_database_size
+
+        # Verify the returned size
+        self.assertEqual(db_size, 1024000)
 
     @patch('mysql_info.get_dir_last_change')
     @patch('mysql_info.get_dir_info', return_value=MockDirInfo('/base/data/path'))  # Use MockDirInfo
