@@ -104,15 +104,15 @@ class TestDirInfoFunctions(unittest.TestCase):
         """Test get_dir_last_change with an empty directory."""
         empty_dir = os.path.join(self.test_dir, "empty")
         os.makedirs(empty_dir)
-        with self.assertRaisesRegex(FileNotFoundError, f"No accessible files found in directory: {empty_dir}"):
-            get_dir_last_change(empty_dir)
+        last_change = get_dir_last_change(empty_dir)
+        self.assertEqual(last_change, datetime.datetime.fromtimestamp(0))
 
     def test_get_dir_last_change_dir_with_only_subdir(self):
         """Test get_dir_last_change with a directory containing only an empty subdirectory."""
         dir_only_subdir = os.path.join(self.test_dir, "only_subdir")
         os.makedirs(os.path.join(dir_only_subdir, "sub"))
-        with self.assertRaisesRegex(FileNotFoundError, f"No accessible files found in directory: {dir_only_subdir}"):
-            get_dir_last_change(dir_only_subdir)
+        last_change = get_dir_last_change(dir_only_subdir)
+        self.assertEqual(last_change, datetime.datetime.fromtimestamp(0))
 
     # --- Tests for get_dir_info ---
 

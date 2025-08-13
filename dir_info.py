@@ -77,7 +77,7 @@ def get_dir_last_change(dir_path: str) -> datetime:
     if not os.path.exists(dir_path):
         raise FileNotFoundError(f"Directory does not exist: {dir_path}")
 
-    latest_time = None
+    latest_time = datetime.fromtimestamp(0)
 
     for root, dirs, files in os.walk(dir_path):
         # Check modification time of all files in this directory
@@ -91,13 +91,10 @@ def get_dir_last_change(dir_path: str) -> datetime:
                     mtime_dt = datetime.fromtimestamp(mtime)
 
                     # Update latest_time if this file is more recent
-                    if latest_time is None or mtime_dt > latest_time:
+                    if mtime_dt > latest_time:
                         latest_time = mtime_dt
                 except (OSError, FileNotFoundError):
                     # Skip files that can't be accessed
                     continue
-
-    if latest_time is None:
-        raise FileNotFoundError(f"No accessible files found in directory: {dir_path}")
 
     return latest_time
