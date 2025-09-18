@@ -77,7 +77,8 @@ def get_dir_last_change(dir_path: str) -> datetime:
     if not os.path.exists(dir_path):
         raise FileNotFoundError(f"Directory does not exist: {dir_path}")
 
-    latest_time = datetime.fromtimestamp(0)
+    # Use a safe datetime that works on both 32-bit and 64-bit systems
+    latest_time = datetime(1900, 1, 1, 0, 0, 0)
 
     for root, dirs, files in os.walk(dir_path):
         # Check modification time of all files in this directory
@@ -88,7 +89,12 @@ def get_dir_last_change(dir_path: str) -> datetime:
                 try:
                     # Get the modification time
                     mtime = os.path.getmtime(file_path)
-                    mtime_dt = datetime.fromtimestamp(mtime)
+                    try:
+                        mtime_dt = datetime.fromtimestamp(mtime)
+                    except (OSError, OverflowError, ValueError):
+                        # On 32-bit systems, timestamps outside the valid range will fail
+                        # Skip this file if we can't convert its timestamp
+                        continue
 
                     # Update latest_time if this file is more recent
                     if mtime_dt > latest_time:

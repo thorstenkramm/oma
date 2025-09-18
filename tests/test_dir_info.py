@@ -105,14 +105,14 @@ class TestDirInfoFunctions(unittest.TestCase):
         empty_dir = os.path.join(self.test_dir, "empty")
         os.makedirs(empty_dir)
         last_change = get_dir_last_change(empty_dir)
-        self.assertEqual(last_change, datetime.datetime.fromtimestamp(0))
+        self.assertEqual(last_change, datetime.datetime(1900, 1, 1, 0, 0, 0))
 
     def test_get_dir_last_change_dir_with_only_subdir(self):
         """Test get_dir_last_change with a directory containing only an empty subdirectory."""
         dir_only_subdir = os.path.join(self.test_dir, "only_subdir")
         os.makedirs(os.path.join(dir_only_subdir, "sub"))
         last_change = get_dir_last_change(dir_only_subdir)
-        self.assertEqual(last_change, datetime.datetime.fromtimestamp(0))
+        self.assertEqual(last_change, datetime.datetime(1900, 1, 1, 0, 0, 0))
 
     # --- Tests for get_dir_info ---
 

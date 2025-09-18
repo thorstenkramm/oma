@@ -157,7 +157,8 @@ backup_dir = "/path/that/does/not/exist"
         with self.assertRaises(ValueError) as context:
             get_config(invalid_syntax_path)
         self.assertIn(
-            "Mutually exclusive values: cannot specify 'skip_unchanged_dbs' with 'delete_before' option",
+            "Mutually exclusive values: cannot specify 'skip_unchanged_dbs' with "
+            "'delete_before' and 'versions < 2' option. Increase versions.",
             str(context.exception)
         )
 

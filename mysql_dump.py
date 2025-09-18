@@ -151,12 +151,12 @@ class MySQLDump:
             previous_dump_age = datetime.now() - previous_dump_time
             self.logger.debug(
                 f"DB '{database}' last change: {database_last_change} "
-                + f"[ts={database_last_change.timestamp()}] ({database_dir_age.seconds} sec. ago)")
+                + f"({database_dir_age.seconds} sec. ago)")
             self.logger.debug(
                 f"DB '{database}' previous backup: {previous_dump_time} "
-                + f"[ts={previous_dump_time.timestamp()}] ({previous_dump_age.seconds} sec. ago)")
+                + f"({previous_dump_age.seconds} sec. ago)")
 
-            if previous_dump_time.timestamp() > database_last_change.timestamp():
+            if previous_dump_time > database_last_change:
                 self.logger.info(f"DB '{database}': Backup is newer than last database change. Reusing previous backup")
                 try:
                     self.store_manager.reuse_previous_backup(database)

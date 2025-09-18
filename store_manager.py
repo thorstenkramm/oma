@@ -121,7 +121,7 @@ class StoreManager:
             f.write(datetime.now().isoformat())
 
     def cleanup_before(self, versions: int) -> list[str]:
-        return self._cleanup(versions - 1)
+        return self._cleanup(versions)
 
     def cleanup_after(self, versions: int) -> list[str]:
         return self._cleanup(versions)

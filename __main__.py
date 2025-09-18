@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import socket
 import sys
 
 from mysql_dump import MySQLDump, BackupResult, NotEnoughDiskSpaceError
@@ -31,6 +32,21 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def acquire_execution_lock(port):
+    """
+    Acquire an exclusive execution lock by binding to a local port.
+    Returns the socket if successful, None if port is already in use.
+    """
+    try:
+        lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        lock_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        lock_socket.bind(('127.0.0.1', port))
+        lock_socket.listen(1)  # Put socket in listening state so port shows as open
+        return lock_socket
+    except OSError:
+        return None
+
+
 def main():
     # Parse command line options
     args = parse_arguments()
@@ -46,6 +62,12 @@ def main():
     except ValueError as e:
         sys.stderr.write("Invalid configuration: %s\n" % e)
         sys.exit(1)
+
+    # Try to acquire execution lock to prevent parallel runs
+    lock_socket = acquire_execution_lock(config.lock_port)
+    if lock_socket is None:
+        sys.stderr.write("Another instance of OMA is already running (port %d is in use)\n" % config.lock_port)
+        sys.exit(3)
 
     # Initialize logger with appropriate log level
     log_level = "debug" if args.debug else config.log_level
@@ -86,7 +108,11 @@ def main():
         sys.exit(1)
 
     # Clean up before doing the backup, if desired
-    store_manager.cleanup_before(config.versions) if config.delete_before else None
+    if config.delete_before:
+        logger.debug(f"Removing old backup directories before new backup. Will keep {config.versions} versions ...")
+        removed = store_manager.cleanup_before(config.versions)
+        logger.info(f"Removed old backup directories: {removed}")
+
     # Do the backup
     logger.info("Performing the backup now ...")
     try:
@@ -103,6 +129,7 @@ def main():
 
     # Clean up after doing the backup, if desired
     if not config.delete_before:
+        logger.debug(f"Removing old backup directories after current backup. Will keep {config.versions} versions ...")
         removed = store_manager.cleanup_after(config.versions)
         logger.info(f"Removed old backup directories: {removed}")
 
@@ -113,6 +140,9 @@ def main():
 
     # Send log to zabbix, if desired
     zabbix_sender.send_log_file(backup_result)
+
+    # Close the lock socket to release the port
+    lock_socket.close()
 
 
 if __name__ == "__main__":

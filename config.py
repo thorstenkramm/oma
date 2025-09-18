@@ -52,6 +52,7 @@ class Config:
     log_level: str
     skip_unchanged_dbs: bool
     link_type: str
+    lock_port: int
     zbx: ZbxConfig
     conditions: ConditionsConfig
 
@@ -143,6 +144,8 @@ def get_config(config_file: str) -> Config:
         log_level=main_config.get("log_level", "info"),
         # Default: false
         skip_unchanged_dbs=main_config.get("skip_unchanged_dbs", False),
+        # Default: 45678 (port for execution lock)
+        lock_port=main_config.get("lock_port", 45678),
         zbx=ZbxConfig(
             item_key=zbx_config.get("item_key", ""),
             sender_bin=zbx_config.get("sender_bin", "zabbix_sender"),
@@ -163,8 +166,11 @@ def get_config(config_file: str) -> Config:
         raise ValueError("Parallelism cannot be zero")
 
     # Reject mutually exclusive values
-    if config.delete_before and config.skip_unchanged_dbs:
-        raise ValueError("Mutually exclusive values: cannot specify 'skip_unchanged_dbs' with 'delete_before' option")
+    if config.delete_before and config.skip_unchanged_dbs and config.versions < 2:
+        raise ValueError(
+            "Mutually exclusive values: "
+            "cannot specify 'skip_unchanged_dbs' with 'delete_before' and 'versions < 2' option. Increase versions."
+        )
 
     # Reject mutually exclusive values for database selection
     if config.exclude_databases and config.do_databases:

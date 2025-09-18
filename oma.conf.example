@@ -14,7 +14,8 @@ backup_dir = "/tmp/mysql_backup"
 
 # Whether to delete old version before or after the current backup
 # Default: false (delete old backups after the current backup)
-# Requires: skip_unchanged_dbs = false
+# Use with caution! You can lose all your backups.
+# Requires: versions > 1 or skip_unchanged_dbs = false
 #delete_before = true
 
 # Skip unchanged databases. Instead of dumping a database that
@@ -64,6 +65,12 @@ backup_dir = "/tmp/mysql_backup"
 # Log level, one of debug,info,warning,error. Optional.
 # Default: info
 #log_level = "debug"
+
+# Port used for preventing parallel execution. Optional.
+# OMA binds to this port on localhost to ensure only one instance runs at a time.
+# The port is automatically released when the process exits (even on crash).
+# Default: 45678
+#lock_port = 45678
 
 [conditions]
 # List of commands executed with /bin/sh before the backup starts.

@@ -1,3 +1,4 @@
+import socket
 import time
 import unittest
 import subprocess
@@ -190,7 +191,7 @@ class TestEndToEnd(unittest.TestCase):
             'ERROR Run condition stderr: /bin/sh: 1: non-existing-command: not found',
             'ERROR Backup aborted due to failed run conditions',
         ]
-        # Assert backup has been skipped
+        # Assert messages are found
         for msg in msgs:
             self.assertIn(msg, log_content, f"{msg}: not found in the log file")
 
@@ -205,7 +206,7 @@ class TestEndToEnd(unittest.TestCase):
             'ERROR Run condition stderr: Command timed out after 1 seconds',
             'ERROR Backup aborted due to failed run conditions',
         ]
-        # Assert backup has been skipped
+        # Assert messages are found
         for msg in msgs:
             self.assertIn(msg, log_content, f"{msg}: not found in the log file")
 
@@ -218,9 +219,93 @@ class TestEndToEnd(unittest.TestCase):
             'INFO Terminate condition succeeded: \'ls -la $OMA_CURRENT_DIR\'',
             'INFO All terminate conditions succeeded',
         ]
+        # Assert messages are found
+        for msg in msgs:
+            self.assertIn(msg, log_content, f"{msg}: not found in the log file")
+
+    def test_11_delete_before(self):
+        self.__run_backup("delete_before", 0)
+
+        log_content = self.__read_log()
+        msgs = [
+            'DEBUG Removing old backup directories before new backup',
+            'INFO Removed old backup directories',
+            'Backup is newer than last database change. Reusing previous backup'
+        ]
         # Assert backup has been skipped
         for msg in msgs:
             self.assertIn(msg, log_content, f"{msg}: not found in the log file")
+
+    def test_12_double_run(self):
+        """
+        Test that parallel execution is prevented when a second instance is started.
+        Uses sleep_for_double_run.conf which has a 5-second sleep in run_conditions.
+        """
+        proc1 = None
+        proc2 = None
+
+        try:
+            # Start first instance in background
+            proc1 = subprocess.Popen(
+                "./oma -c test_data/sleep_for_double_run.conf",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+
+            # Give first instance more time to acquire the lock (but not complete)
+            time.sleep(1)
+
+            self.assertTrue(is_port_in_use(), "TCP Lock Port not open.")
+
+            # Try to start second instance while first is still running
+            proc2 = subprocess.Popen(
+                "./oma -c test_data/run1.conf",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+
+            # Wait for second instance to complete (should exit immediately)
+            try:
+                stdout2, stderr2 = proc2.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc2.kill()
+                stdout2, stderr2 = proc2.communicate()
+                self.fail("Second instance timed out, should have exited immediately")
+
+            # Verify second instance exited with correct code
+            self.assertEqual(proc2.returncode, 3,
+                             f"Expected exit code 3 for second instance, got {proc2.returncode}")
+
+            # Verify error message in stderr
+            stderr2_str = stderr2.decode()
+            self.assertIn("Another instance of OMA is already running", stderr2_str,
+                          f"Expected error message not found in stderr: {stderr2_str}")
+            self.assertIn("port", stderr2_str,
+                          f"Expected 'port' mention in error message: {stderr2_str}")
+
+            print(f"Second instance stderr: {stderr2_str}")
+            print(f"Second instance exit code: {proc2.returncode}")
+            print("✓ Parallel execution prevention test passed")
+
+        finally:
+            # Clean up both instances
+            if proc1:
+                proc1.terminate()
+                try:
+                    proc1.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    proc1.kill()
+                    proc1.wait()
+
+            if proc2 and proc2.poll() is None:
+                proc2.terminate()
+                try:
+                    proc2.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    proc2.kill()
+                    proc2.wait()
 
     def __run_backup(self, config: str = "run1", expected_exit_code: int = 0):
         response = subprocess.run(
@@ -282,6 +367,19 @@ def count_subfolders(directory_path):
             real_subfolders += 1
 
     return real_subfolders
+
+
+def is_port_in_use(host='127.0.0.1', port=45678):
+    """Check if a port is in use (cannot be bound)"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((host, port))
+            # If we can bind, port is free
+            return False
+    except OSError:
+        # If we cannot bind, port is in use
+        return True
 
 
 if __name__ == "__main__":
