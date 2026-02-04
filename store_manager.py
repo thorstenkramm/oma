@@ -121,7 +121,11 @@ class StoreManager:
             f.write(datetime.now().isoformat())
 
     def cleanup_before(self, versions: int) -> list[str]:
-        return self._cleanup(versions)
+        removed = self._cleanup(versions)
+        # Refresh current_dir to get updated bytes_free after cleanup
+        if removed:
+            self.current_dir = get_dir_info(self.current_dir.path)
+        return removed
 
     def cleanup_after(self, versions: int) -> list[str]:
         return self._cleanup(versions)

@@ -24,7 +24,7 @@ backup_dir = "/tmp/mysql_backup"
 # directories of previous backups.
 # Database changes are detected by the modification date of the
 # table files in the mysql data dir.
-# Default: false, requires: delete_before = false
+# Default: false, requires: delete_before = false or versions > 1
 #skip_unchanged_dbs = true
 
 # When the previous backup is re-used and a link in directories to current

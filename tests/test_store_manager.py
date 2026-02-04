@@ -101,5 +101,70 @@ class TestStoreManager(unittest.TestCase):
         mock_rmtree.assert_not_called()
 
 
+    @patch('store_manager.get_dir_info')
+    @patch('store_manager.shutil.rmtree')
+    @patch('store_manager.glob.glob')
+    def test_cleanup_before_refreshes_current_dir(self, mock_glob, mock_rmtree, mock_get_dir_info):
+        """Test that cleanup_before refreshes current_dir.bytes_free after removing directories"""
+        # Setup: simulate 3 existing backup dirs, versions=2 means 1 should be removed
+        self.store_manager.backup_dir = '/backup'
+        self.store_manager.current_dir = MagicMock()
+        self.store_manager.current_dir.path = '/backup/oma_20231003-120000'
+
+        mock_glob.return_value = [
+            '/backup/oma_20231001-120000',
+            '/backup/oma_20231002-120000',
+            '/backup/oma_20231003-120000',
+        ]
+
+        # Mock get_dir_info to return a new DirInfo with updated bytes_free
+        new_dir_info = MagicMock()
+        new_dir_info.path = '/backup/oma_20231003-120000'
+        new_dir_info.bytes_free = 500000000000  # 500 GB free after cleanup
+        mock_get_dir_info.return_value = new_dir_info
+
+        # Call cleanup_before with versions=2
+        removed = self.store_manager.cleanup_before(versions=2)
+
+        # Verify one directory was removed
+        self.assertEqual(len(removed), 1)
+        self.assertEqual(removed[0], '/backup/oma_20231001-120000')
+
+        # Verify get_dir_info was called to refresh current_dir
+        mock_get_dir_info.assert_called_once_with('/backup/oma_20231003-120000')
+
+        # Verify current_dir was updated
+        self.assertEqual(self.store_manager.current_dir, new_dir_info)
+
+    @patch('store_manager.get_dir_info')
+    @patch('store_manager.shutil.rmtree')
+    @patch('store_manager.glob.glob')
+    def test_cleanup_before_no_refresh_when_nothing_removed(self, mock_glob, mock_rmtree, mock_get_dir_info):
+        """Test that cleanup_before does NOT refresh current_dir when no directories are removed"""
+        # Setup: only 2 backup dirs, versions=2 means nothing should be removed
+        self.store_manager.backup_dir = '/backup'
+        original_current_dir = MagicMock()
+        original_current_dir.path = '/backup/oma_20231002-120000'
+        original_current_dir.bytes_free = 100000000000  # 100 GB
+        self.store_manager.current_dir = original_current_dir
+
+        mock_glob.return_value = [
+            '/backup/oma_20231001-120000',
+            '/backup/oma_20231002-120000',
+        ]
+
+        # Call cleanup_before with versions=2
+        removed = self.store_manager.cleanup_before(versions=2)
+
+        # Verify no directories were removed
+        self.assertEqual(len(removed), 0)
+
+        # Verify get_dir_info was NOT called (no refresh needed)
+        mock_get_dir_info.assert_not_called()
+
+        # Verify current_dir is unchanged
+        self.assertEqual(self.store_manager.current_dir, original_current_dir)
+
+
 if __name__ == '__main__':
     unittest.main()
