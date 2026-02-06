@@ -8,3 +8,7 @@ test.sh
 VERSION
 CLAUDE.md
 feature_request.md
+.pytest_cache/
+__pycache__/
+oma.log
+tests/__pycache__/
