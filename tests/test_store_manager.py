@@ -100,7 +100,6 @@ class TestStoreManager(unittest.TestCase):
         # Verify rmtree was not called since rename failed
         mock_rmtree.assert_not_called()
 
-
     @patch('store_manager.get_dir_info')
     @patch('store_manager.shutil.rmtree')
     @patch('store_manager.glob.glob')
